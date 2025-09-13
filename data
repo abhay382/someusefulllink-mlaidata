@@ -1,0 +1,221 @@
+import pandas as pd
+import sqlite3
+from sqlalchemy import create_engine
+
+# =========================
+# 1️⃣ EXTRACT
+# =========================
+
+# Connect to source DB
+source_engine = create_engine("sqlite:///source.db")
+query = "SELECT * FROM your_table"
+df = pd.read_sql(query, source_engine)
+
+print(f"🔎 Raw data shape: {df.shape}")
+
+# =========================
+# 2️⃣ TRANSFORM (CLEAN + MANIPULATE)
+# =========================
+
+# --- Cleaning ---
+df = df.drop_duplicates()                    # Remove duplicates
+df = df.dropna(axis=1, how='all')            # Drop empty columns
+df = df.fillna({"price": 0, "quantity": 0})  # Fill missing values selectively
+
+# --- Filtering ---
+df = df[df['price'] > 100]                   # Keep rows with price > 100
+
+# --- Manipulation / Feature Engineering ---
+# Create new calculated columns
+df['total_value'] = df['price'] * df['quantity']
+df['price_category'] = pd.cut(
+    df['price'],
+    bins=[0, 500, 1000, float("inf")],
+    labels=['Low', 'Medium', 'High']
+)
+
+# Group / aggregate if needed
+summary_df = df.groupby("price_category")['total_value'].sum().reset_index()
+
+print("✅ Cleaned & transformed data shape:", df.shape)
+print(summary_df)
+
+# =========================
+# 3️⃣ LOAD
+# =========================
+
+# Connect to target DB
+target_engine = create_engine("sqlite:///cleaned_data.db")
+
+# Save transformed data
+df.to_sql("cleaned_table", target_engine, if_exists="replace", index=False)
+
+# Save summary/aggregated data (optional)
+summary_df.to_sql("summary_table", target_engine, if_exists="replace", index=False)
+
+print("🎯 ETL Process Complete – Cleaned & transformed data stored successfully!")
+
+
+
+
+# MySQL
+source_engine = create_engine("mysql+pymysql://user:password@localhost/source_db")
+
+# PostgreSQL
+source_engine = create_engine("postgresql://user:password@localhost/source_db")
+
+
+
+
+
+
+🔧 Full ETL (MongoDB → Pandas → SQL
+
+import pandas as pd
+from pymongo import MongoClient
+from sqlalchemy import create_engine
+
+# =========================
+# 1️⃣ EXTRACT (from MongoDB)
+# =========================
+
+# Connect to MongoDB
+mongo_client = MongoClient("mongodb://localhost:27017/")
+db = mongo_client["source_db"]  # Database name
+collection = db["your_collection"]
+
+# Pull data from MongoDB
+data = list(collection.find())  # Returns list of dicts
+df = pd.DataFrame(data)
+
+print(f"🔎 Raw data shape: {df.shape}")
+
+# =========================
+# 2️⃣ TRANSFORM (Clean + Manipulate)
+# =========================
+
+# --- Cleaning ---
+df = df.drop(columns=["_id"], errors="ignore")  # Drop MongoDB _id column
+df = df.drop_duplicates()
+df = df.dropna(axis=1, how='all')
+df = df.fillna({"price": 0, "quantity": 0})
+
+# --- Filtering ---
+df = df[df["price"] > 100]
+
+# --- Manipulation / Feature Engineering ---
+df["total_value"] = df["price"] * df["quantity"]
+df["price_category"] = pd.cut(
+    df["price"],
+    bins=[0, 500, 1000, float("inf")],
+    labels=["Low", "Medium", "High"]
+)
+
+# Example: Group summary
+summary_df = df.groupby("price_category")["total_value"].sum().reset_index()
+
+print("✅ Cleaned & transformed data shape:", df.shape)
+print(summary_df)
+
+# =========================
+# 3️⃣ LOAD (to SQL)
+# =========================
+
+# Connect to Target DB (SQLite, MySQL, PostgreSQL)
+target_engine = create_engine("sqlite:///cleaned_data.db")
+
+# Save to SQL
+df.to_sql("cleaned_table", target_engine, if_exists="replace", index=False)
+summary_df.to_sql("summary_table", target_engine, if_exists="replace", index=False)
+
+print("🎯 ETL Process Complete – Cleaned & transformed data stored successfully!")
+
+
+
+
+data = list(collection.find({"price": {"$gt": 100}}))
+
+
+
+import pandas as pd
+from pymongo import MongoClient
+
+# =========================
+# 1️⃣ EXTRACT (from MongoDB)
+# =========================
+
+# Connect to Source MongoDB
+source_client = MongoClient("mongodb://localhost:27017/")
+source_db = source_client["source_db"]
+source_collection = source_db["your_collection"]
+
+# Read data from MongoDB
+data = list(source_collection.find())  # Returns list of dicts
+df = pd.DataFrame(data)
+
+print(f"🔎 Raw data shape: {df.shape}")
+
+# =========================
+# 2️⃣ TRANSFORM (Clean + Manipulate)
+# =========================
+
+# --- Cleaning ---
+df = df.drop(columns=["_id"], errors="ignore")  # Drop _id column
+df = df.drop_duplicates()                       # Remove duplicates
+df = df.dropna(axis=1, how='all')               # Drop empty columns
+df = df.fillna({"price": 0, "quantity": 0})     # Fill missing values
+
+# --- Filtering ---
+df = df[df["price"] > 100]                      # Keep only price > 100
+
+# --- Manipulation / Feature Engineering ---
+df["total_value"] = df["price"] * df["quantity"]
+df["price_category"] = pd.cut(
+    df["price"],
+    bins=[0, 500, 1000, float("inf")],
+    labels=["Low", "Medium", "High"]
+)
+
+# Example: Aggregation
+summary_df = df.groupby("price_category")["total_value"].sum().reset_index()
+
+print("✅ Cleaned & transformed data shape:", df.shape)
+print(summary_df)
+
+# =========================
+# 3️⃣ LOAD (back to another MongoDB collection)
+# =========================
+
+# Connect to Target MongoDB (could be same or different DB)
+target_client = MongoClient("mongodb://localhost:27017/")
+target_db = target_client["cleaned_db"]
+cleaned_collection = target_db["cleaned_collection"]
+summary_collection = target_db["summary_collection"]
+
+# Convert DataFrame to dictionary and insert
+cleaned_collection.delete_many({})  # Optional: clear old data
+cleaned_collection.insert_many(df.to_dict("records"))
+
+summary_collection.delete_many({})
+summary_collection.insert_many(summary_df.to_dict("records"))
+
+print("🎯 ETL Process Complete – Cleaned data stored back into MongoDB!")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
