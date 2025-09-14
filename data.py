@@ -204,6 +204,32 @@ print("🎯 ETL Process Complete – Cleaned data stored back into MongoDB!")
 
 
 
+Python Script – Save Filtered Data to CSV
+
+
+import sqlite3
+import pandas as pd
+
+# Step 1: Connect to SQLite database
+conn = sqlite3.connect("your_database.db")
+
+# Step 2: Read data from a table
+df = pd.read_sql_query("SELECT * FROM your_table_name", conn)
+
+# Step 3: Clean & filter data
+df = df.dropna(axis=1, how='all')             # Drop empty columns
+df = df.drop_duplicates()                     # Remove duplicate rows
+df = df.dropna()                              # Remove rows with missing values
+df = df[df['price'] > 100]                    # Example filter: price > 100
+
+# Step 4: Save to CSV
+output_file = "filtered_data.csv"
+df.to_csv(output_file, index=False)
+
+# Step 5: Close DB connection
+conn.close()
+
+print(f"✅ Filtered data saved as {output_file}")
 
 
 
